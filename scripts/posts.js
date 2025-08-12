@@ -1,80 +1,99 @@
-// /scripts/posts.js
+const urlDummy = 'https://dummyjson.com/auth/';
+const urlPlaceholder = 'https://jsonplaceholder.typicode.com/';
+var posts = [];
 
-document.addEventListener('DOMContentLoaded', () => {
-  const token = localStorage.getItem('authToken');
-  if (!token) {
-    window.location.href = 'login.html';
-  }
-
-  const logoutBtn = document.getElementById('logoutBtn');
-  const postsContainer = document.getElementById('postsContainer');
-  const searchInput = document.getElementById('searchInput');
-
-  const modal = document.getElementById('postModal');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalBody = document.getElementById('modalBody');
-  const closeBtn = document.querySelector('.close-btn');
-
-  let posts = [];
-
-  logoutBtn.addEventListener('click', () => {
-    localStorage.clear();
-    window.location.href = 'login.html';
-  });
-
-  closeBtn.addEventListener('click', () => {
-    modal.classList.add('hidden');
-  });
-
-  window.addEventListener('click', (e) => {
-    if (e.target === modal) {
-      modal.classList.add('hidden');
+//Redireciona para a página de posts se o token for válido
+async function direcionamento() {
+    if (!await validaToken()) {
+        localStorage.removeItem('usuario');
+        window.location.href = 'login.html';
     }
-  });
+}
 
-  async function carregarPosts() {
-    try {
-      const res = await fetch('https://jsonplaceholder.typicode.com/posts');
-      posts = await res.json();
-      mostrarPosts(posts);
-    } catch (error) {
-      postsContainer.innerHTML = '<p>Erro ao carregar os posts.</p>';
+//Controle dos inícios
+async function inicio() {
+    //Ao carregar a página, verifica o token e redireciona se necessário
+    await direcionamento();
+    //Carrega posts da API placeholder
+    await carregarPosts();
+    renderizarPosts(posts);
+}
+inicio();
+
+//Atualiza a página a cada 5 segundos para verificar o token
+setInterval(() => {
+    direcionamento();
+}, 5000);
+
+//Método para validar o token de acesso
+async function validaToken() {
+    const usuario = JSON.parse(localStorage.getItem('usuario'));
+    let result = false;
+    if (usuario) {
+        const options = {
+            method: 'GET',
+            headers: {
+                Authorization: 'Bearer ' + usuario.accessToken,
+            }
+        };
+
+        await fetch(urlDummy + 'me', options)
+            .then(response => response.json())
+            .then(response => {
+                if (response.id) {
+                    result = true;
+                }
+            })
+            .catch(err => console.error(err));
     }
-  }
+    return result;
+}
 
-  function mostrarPosts(lista) {
-    postsContainer.innerHTML = '';
-    lista.forEach(post => {
-      const card = document.createElement('div');
-      card.classList.add('post-card');
-      card.innerHTML = `
-        <h3>${post.title}</h3>
-        <button class="verDetalhes" data-id="${post.id}">Ver detalhes</button>
-      `;
-      postsContainer.appendChild(card);
+//Sair da sessão e redirecionar para a página de login
+function sair() {
+    localStorage.removeItem('usuario');
+    window.location.href = 'login.html';
+}
+
+//Carrgar posts da API placeholder
+async function carregarPosts() {
+    const response = await fetch(urlPlaceholder + 'posts');
+    const data = await response.json();
+    posts = data;
+}
+
+function renderizarPosts(dados) {
+    const main = document.querySelector('main');
+    main.innerHTML = ''; // Limpa o conteúdo atual
+
+    dados.forEach(post => {
+        const postElement = document.createElement('div');
+        postElement.className = 'post';
+        postElement.innerHTML = `
+            <h3>${post.title}</h3>
+            <p>${post.body}</p>
+            <button onclick='abrirModalDetalhes(${post.id})'>Detalhes</button>
+        `;
+        main.appendChild(postElement);
     });
+}
 
-    // Eventos de clique nos botões
-    document.querySelectorAll('.verDetalhes').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const id = e.target.dataset.id;
-        const post = posts.find(p => p.id == id);
-        if (post) {
-          modalTitle.textContent = post.title;
-          modalBody.textContent = post.body;
-          modal.classList.remove('hidden');
-        }
-      });
-    });
-  }
+//Método para buscar posts com base em uma query
+function buscarPosts(query) {
+    const filteredPosts = posts.filter(post => post.title.toLowerCase().includes(query.toLowerCase()) || post.body.toLowerCase().includes(query.toLowerCase()));
+    renderizarPosts(filteredPosts);
+}
 
-  searchInput.addEventListener('input', () => {
-    const termo = searchInput.value.toLowerCase();
-    const filtrados = posts.filter(post =>
-      post.title.toLowerCase().includes(termo)
-    );
-    mostrarPosts(filtrados);
-  });
-
-  carregarPosts();
-});
+function abrirModalDetalhes(postId) {
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+        const modal = document.getElementById('modal');
+        modal.classList.remove('oculto');
+        const dados = document.getElementById('post-details');
+        dados.innerHTML = `
+            <h2>${post.title}</h2>
+            <p>${post.body}</p>
+            <p>Autor: ${post.userId}</p>
+        `;
+    }
+}

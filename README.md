@@ -75,3 +75,13 @@ Serão avaliados os seguintes pontos:
 1. Crie um fork deste repositório.
 2. Implemente a solução.
 3. Faça commits frequentes e claros.
+
+## Login
+![](./login.png)
+## Login Responsivo
+![](./login-responsivo.png)
+## Posts
+![](./posts.png)
+## Posts Responsivo
+![](./post-responsivo.png)
+
